@@ -38,3 +38,7 @@ next-env.d.ts
 # prisma
 /prisma/migrations
 
+# IDE
+workspace.code-workspace
+*.code-workspace
+
