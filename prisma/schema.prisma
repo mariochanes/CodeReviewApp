@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model CodeSnippet {
+  id            String   @id @default(cuid())
+  repository    String
+  filePath      String
+  content       String
+  language      String
+  startLine     Int
+  endLine       Int
+  url           String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  reviews       Review[]
+  project       Project? @relation(fields: [projectId], references: [id])
+  projectId     String?
+  
+  @@index([projectId])
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  snippetId     String
+  reviewerName  String
+  comment       String
+  smellType     String   // e.g., "code_smell", "good_practice", "bug", etc.
+  severity      String   // "low", "medium", "high"
+  createdAt     DateTime @default(now())
+  
+  snippet       CodeSnippet @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+  votes         Vote[]
+  
+  @@index([snippetId])
+}
+
+model Vote {
+  id            String   @id @default(cuid())
+  reviewId     String
+  voterName    String
+  isAgree      Boolean  // true = agree, false = disagree
+  createdAt     DateTime @default(now())
+  
+  review       Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  
+  @@unique([reviewId, voterName])
+  @@index([reviewId])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  owner         String
+  name          String
+  fullName      String   @unique // owner/name
+  description   String?
+  qualityScore  Float    @default(0)
+  reviewCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  snippets      CodeSnippet[]
+  
+  @@index([qualityScore])
+  @@index([fullName])
+}
+
