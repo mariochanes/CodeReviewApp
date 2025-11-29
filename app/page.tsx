@@ -441,22 +441,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Try to load in this order:
-    // 1. Local code snippet (from our own codebase) - INSTANT
-    // 2. Last viewed snippet from cache
-    // 3. Random snippet from cache
-    // 4. Static snippet
-    
     // IMPORTANT: Set loading to false immediately to prevent infinite loading state
     setLoading(false);
     
-    // First, try to use a pre-generated local snippet from our own codebase
-    console.log('[Initial Load] Attempting to load local snippet');
+    // Use a local snippet for immediate display (zero network requests)
+    console.log('[Initial Load] Using local snippet for immediate display');
     const localSnippet = getRandomPreGeneratedSnippet();
     
     if (localSnippet) {
       console.log('[Initial Load] Successfully loaded local snippet:', localSnippet.id);
-      // Use local snippet for immediate display (zero network requests)
       const localSnippetFormatted = {
         id: localSnippet.id,
         repository: 'CodeReviewApp',
@@ -474,60 +467,29 @@ export default function Home() {
         snippet: localSnippetFormatted,
         reviews: []
       });
-      setLoading(false);
       setUsingLocalSnippet(true);
       setSnippetCount(prev => prev + 1);
-      
-      // No background loading - preserve resources
     } else {
-      console.log('[Initial Load] No local snippet available, trying cached snippets');
-      // Fallback to cached snippets
-      const lastViewedSnippet = getLastViewedSnippet();
-      const cachedSnippet = lastViewedSnippet || getRandomCachedSnippet();
+      // Fallback to static snippet if no local snippet available
+      console.log('[Initial Load] No local snippet available, using static snippet');
+      const staticSnippet = getRandomStaticSnippet();
+      const codeSnippet = convertStaticToCodeSnippet(staticSnippet);
       
-      if (cachedSnippet) {
-        console.log('[Initial Load] Using cached snippet');
-        // Use cached snippet for immediate display
-        const snippetWithId = {
-          ...cachedSnippet,
-          id: `cached-${Date.now()}-${Math.random()}`
-        };
-        
-        setSnippetData({
-          snippet: snippetWithId,
-          reviews: []
-        });
-        setLoading(false);
-        setUsingCachedSnippet(true);
-        setSnippetCount(prev => prev + 1);
-        
-        // Cache the snippet for future use
-        cacheSnippet(cachedSnippet);
-        setLastViewedSnippet(cachedSnippet);
-      } else {
-        console.log('[Initial Load] No cached snippet available, using static snippet');
-        // No cached snippet, use static snippet
-        const staticSnippet = getRandomStaticSnippet();
-        const codeSnippet = convertStaticToCodeSnippet(staticSnippet);
-        
-        // Add an ID to the snippet
-        const snippetWithId = {
-          ...codeSnippet,
-          id: `static-${Date.now()}-${Math.random()}`
-        };
-        
-        setSnippetData({
-          snippet: snippetWithId,
-          reviews: []
-        });
-        setLoading(false);
-        setUsingStaticSnippet(true);
-        setSnippetCount(prev => prev + 1);
-      }
+      // Add an ID to the snippet
+      const snippetWithId = {
+        ...codeSnippet,
+        id: `static-${Date.now()}-${Math.random()}`
+      };
+      
+      setSnippetData({
+        snippet: snippetWithId,
+        reviews: []
+      });
+      setUsingStaticSnippet(true);
+      setSnippetCount(prev => prev + 1);
     }
     
     // No automatic cache filling or preloading - user must explicitly request it
-    
   }, []);
 
   // Default snippet to use if nothing else is available
