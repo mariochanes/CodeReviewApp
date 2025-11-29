@@ -39,9 +39,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [snippetCount, setSnippetCount] = useState(0)
+  const [localReviews, setLocalReviews] = useState<{[key: string]: any[]}>({})
 
   // Get next snippet - prioritize local snippets
-  const getNextSnippet = async () => {
+  const getNextSnippet = () => {
     setLoading(true)
     setError(null)
     
@@ -63,9 +64,12 @@ export default function Home() {
         commitAuthorLogin: 'codereviewapp'
       }
       
+      // Get any stored reviews for this snippet
+      const reviews = localReviews[localSnippet.id] || []
+      
       setSnippetData({
         snippet: localSnippetFormatted,
-        reviews: []
+        reviews: reviews
       })
       setSnippetCount(prev => prev + 1)
     } else {
@@ -74,14 +78,18 @@ export default function Home() {
       const codeSnippet = convertStaticToCodeSnippet(staticSnippet)
       
       // Add an ID to the snippet
+      const snippetId = `static-${Date.now()}-${Math.random()}`
       const snippetWithId = {
         ...codeSnippet,
-        id: `static-${Date.now()}-${Math.random()}`
+        id: snippetId
       }
+      
+      // Get any stored reviews for this snippet
+      const reviews = localReviews[snippetId] || []
       
       setSnippetData({
         snippet: snippetWithId,
-        reviews: []
+        reviews: reviews
       })
       setSnippetCount(prev => prev + 1)
     }
@@ -89,10 +97,52 @@ export default function Home() {
     setLoading(false)
   }
 
+  // Add a review to the current snippet
+  const addReview = (review: any) => {
+    if (!snippetData) return
+    
+    const snippetId = snippetData.snippet.id
+    const newReviews = [...(localReviews[snippetId] || []), review]
+    
+    // Update local reviews state
+    setLocalReviews(prev => ({
+      ...prev,
+      [snippetId]: newReviews
+    }))
+    
+    // Update current snippet data
+    setSnippetData(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        reviews: newReviews
+      }
+    })
+  }
+
   // Initialize with a snippet on load
   useEffect(() => {
     getNextSnippet()
+    
+    // Try to load reviews from localStorage
+    try {
+      const savedReviews = localStorage.getItem('codereview_local_reviews')
+      if (savedReviews) {
+        setLocalReviews(JSON.parse(savedReviews))
+      }
+    } catch (e) {
+      console.error('Failed to load reviews from localStorage', e)
+    }
   }, [])
+  
+  // Save reviews to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('codereview_local_reviews', JSON.stringify(localReviews))
+    } catch (e) {
+      console.error('Failed to save reviews to localStorage', e)
+    }
+  }, [localReviews])
 
   // Default snippet to use if nothing else is available
   const defaultSnippet = {
@@ -188,6 +238,7 @@ export default function Home() {
             <CodeSnippet
               snippet={snippetData.snippet || defaultSnippet}
               reviews={snippetData.reviews || []}
+              onAddReview={addReview}
             />
           ) : (
             <div className="max-w-6xl mx-auto p-6">

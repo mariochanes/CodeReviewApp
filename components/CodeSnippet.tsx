@@ -29,9 +29,10 @@ interface CodeSnippetProps {
       isAgree: boolean
     }>
   }>
+  onAddReview?: (review: any) => void
 }
 
-export default function CodeSnippet({ snippet, reviews: initialReviews }: CodeSnippetProps) {
+export default function CodeSnippet({ snippet, reviews: initialReviews, onAddReview }: CodeSnippetProps) {
   // Safety check
   if (!snippet) {
     return (
@@ -56,25 +57,28 @@ export default function CodeSnippet({ snippet, reviews: initialReviews }: CodeSn
     setLoading(true)
 
     try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          snippetId: snippet.id,
-          reviewerName,
-          comment,
-          smellType,
-          severity,
-        }),
-      })
-
-      if (response.ok) {
-        const newReview = await response.json()
-        setReviews([newReview, ...reviews])
-        setShowReviewForm(false)
-        setComment('')
-        setReviewerName('')
+      // Create a new review object
+      const newReview = {
+        id: `review-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        snippetId: snippet.id,
+        reviewerName,
+        comment,
+        smellType,
+        severity,
+        createdAt: new Date().toISOString(),
+        votes: []
       }
+
+      // If we have an onAddReview callback, use it
+      if (onAddReview) {
+        onAddReview(newReview)
+      }
+
+      // Update local state
+      setReviews([newReview, ...reviews])
+      setShowReviewForm(false)
+      setComment('')
+      setReviewerName('')
     } catch (error) {
       console.error('Error submitting review:', error)
     } finally {
@@ -82,31 +86,49 @@ export default function CodeSnippet({ snippet, reviews: initialReviews }: CodeSn
     }
   }
 
-  const handleVote = async (reviewId: string, isAgree: boolean, voterName: string) => {
+  const handleVote = (reviewId: string, isAgree: boolean, voterName: string) => {
     if (!voterName.trim()) {
       alert('Please enter your name to vote')
       return
     }
 
-    try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reviewId,
-          voterName,
-          isAgree,
-        }),
-      })
+    // Create a new vote
+    const newVote = {
+      id: `vote-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      reviewId,
+      voterName,
+      isAgree
+    }
 
-      if (response.ok) {
-        // Refresh reviews to get updated vote counts
-        const reviewsResponse = await fetch(`/api/reviews?snippetId=${snippet.id}`)
-        const updatedReviews = await reviewsResponse.json()
-        setReviews(updatedReviews)
+    // Update the reviews with the new vote
+    const updatedReviews = reviews.map(review => {
+      if (review.id === reviewId) {
+        // Check if this user already voted
+        const existingVoteIndex = review.votes.findIndex(v => v.voterName === voterName)
+        
+        if (existingVoteIndex >= 0) {
+          // Update existing vote
+          const updatedVotes = [...review.votes]
+          updatedVotes[existingVoteIndex] = newVote
+          return { ...review, votes: updatedVotes }
+        } else {
+          // Add new vote
+          return { ...review, votes: [...review.votes, newVote] }
+        }
       }
-    } catch (error) {
-      console.error('Error voting:', error)
+      return review
+    })
+
+    setReviews(updatedReviews)
+
+    // If we have an onAddReview callback, use it to update the parent
+    if (onAddReview) {
+      // Find the updated review
+      const updatedReview = updatedReviews.find(r => r.id === reviewId)
+      if (updatedReview) {
+        // Call onAddReview with the updated review
+        onAddReview(updatedReview)
+      }
     }
   }
 
@@ -392,4 +414,3 @@ function VoteButton({
     </button>
   )
 }
-
