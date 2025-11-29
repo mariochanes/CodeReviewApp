@@ -16,6 +16,19 @@ export interface StaticSnippet {
   commitAuthorLogin?: string;
 }
 
+// Add CodeSnippet interface for the conversion function
+export interface CodeSnippet extends StaticSnippet {
+  id?: string;
+  score?: number;
+  metrics?: {
+    complexity: number;
+    codeSmells: number;
+    interestingPatterns: number;
+    educationalValue: number;
+    potentialIssues: number;
+  };
+}
+
 export const staticSnippets: StaticSnippet[] = [
   {
     repository: "facebook/react",
@@ -222,4 +235,21 @@ export function destroy_component(component, detaching) {
 export function getRandomStaticSnippet(): StaticSnippet {
   const randomIndex = Math.floor(Math.random() * staticSnippets.length);
   return staticSnippets[randomIndex];
+}
+
+/**
+ * Convert a static snippet to a code snippet
+ */
+export function convertStaticToCodeSnippet(staticSnippet: StaticSnippet): CodeSnippet {
+  return {
+    ...staticSnippet,
+    score: 10, // Give static snippets a decent score
+    metrics: {
+      complexity: 5,
+      codeSmells: 0,
+      interestingPatterns: 3,
+      educationalValue: 2,
+      potentialIssues: 0
+    }
+  };
 }
